@@ -10,31 +10,39 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework import generics
 from rest_framework import mixins
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication, BaseAuthentication
+from rest_framework.permissions import IsAuthenticated
+
 
 class GenericAPIView(generics.GenericAPIView, mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin):
     serializer_class = ArticleSerializer
     queryset = Article.objects.all()
 
+    # pkey field lookup
     lookup_field = 'id'
+
+    # security related
+    #authentication_classes=[SessionAuthentication, BaseAuthentication]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, id=None):
         if id:
             return self.retrieve(request)
         else:
             return self.list(request)
-    
+
     def post(self, request):
         if id:
             return self.create(request)
-    
+
     def put(self, request, id=None):
         if id:
             return self.update(request, id)
-    
+
     def delete(self, request, id=None):
         if id:
             return self.destroy(request, id)
-
 
 
 ##########Class Based Views##########
@@ -43,13 +51,14 @@ class ArticleAPIView(APIView):
         articles = Article.objects.all()
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
-    
+
     def post(self, request):
         serializer = ArticleSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ArticleDetailView(APIView):
     def get_object(self, id):
@@ -62,7 +71,7 @@ class ArticleDetailView(APIView):
             return HttpResponse(status=status.HTTP_404_NOT_FOUND)
         serializer = ArticleSerializer(article)
         return Response(serializer.data)
-    
+
     def put(self, request, id):
         article = self.get_object(id)
         serializer = ArticleSerializer(article, data=request.data)
@@ -70,13 +79,11 @@ class ArticleDetailView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def delete(self, request, id):
         article = self.get_object(id)
         article.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 
 
 ##########Function Based Views##########
@@ -95,6 +102,7 @@ def article_list(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @csrf_exempt
 @api_view(['GET', 'PUT', 'DELETE'])
 def article_detail(request, pk):
@@ -102,7 +110,7 @@ def article_detail(request, pk):
         article = Article.objects.get(pk=pk)
     except Article.DoesNotExist:
         return HttpResponse(status=status.HTTP_404_NOT_FOUND)
-    
+
     if request.method == 'GET':
         serializer = ArticleSerializer(article)
         return Response(serializer.data)
@@ -118,4 +126,3 @@ def article_detail(request, pk):
     elif request.method == 'DELETE':
         article.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
